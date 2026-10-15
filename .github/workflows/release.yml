@@ -103,13 +103,30 @@ jobs:
           echo "CC=clang-19" >> "$GITHUB_ENV"
           echo "CXX=clang++-19" >> "$GITHUB_ENV"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android packages (platform, build-tools, NDK)
+      # Manual SDK setup: android-actions/setup-android@v3 is broken
+      # (it runs `sdkmanager tools` — the obsolete Tools package was removed
+      # by Google → "Failed to find package 'tools'", exit 1). The runner
+      # already ships a SDK at /usr/local/lib/android/sdk, so install the
+      # platform/build-tools/NDK directly and accept licenses non-interactively.
+      - name: Setup Android SDK + packages (platform, build-tools, NDK)
         run: |
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" > /dev/null
-          yes | sdkmanager --licenses > /dev/null || true
+          set -e
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKMGR=""
+          for cand in "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+                       "$ANDROID_HOME/cmdline-tools/16.0/bin/sdkmanager" \
+                       "$ANDROID_HOME/tools/bin/sdkmanager"; do
+            if [[ -x "$cand" ]]; then SDKMGR="$cand"; break; fi
+          done
+          if [[ -z "$SDKMGR" ]]; then
+            SDKMGR=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
+          fi
+          [[ -n "$SDKMGR" ]] || { echo "ERRO: sdkmanager não encontrado em $ANDROID_HOME" >&2; exit 1; }
+          echo "sdkmanager: $SDKMGR"
+          yes | "$SDKMGR" --licenses > /dev/null || true
+          "$SDKMGR" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" > /dev/null
+          yes | "$SDKMGR" --licenses > /dev/null || true
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
 
       - name: Apply port overlays
