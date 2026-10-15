@@ -4726,29 +4726,54 @@ VkDescriptorSet ResolveTexture(vk::VulkanDevice* dev, const renderer::GuestTextu
 constexpr uint32_t kGuestW = 1280, kGuestH = 720;
 // Resolved once, on first use, and then possibly LOWERED by the VRAM check in
 // EnsureSceneTarget (which runs before any other caller). Never raised.
+//
+// Community Edition 540p: percent scale 50..400 (75 = 960x540, 100 = 720p).
+// RESTUFF_RES_SCALE accepts: "540p"/"540" -> 75, "720p"/"720" -> 100,
+// "960x540" -> 75, "1280x720" -> 100, float "0.5"/"0.75" -> 50/75,
+// percent "50".."400", legacy int "1".."4" -> 100..400. Default 75 (540p).
 inline std::atomic<uint32_t>& ResScaleSlot() {
   static std::atomic<uint32_t> s{0};
   return s;
 }
-inline uint32_t SceneScale() {
+inline uint32_t ResScalePct() {
   auto& slot = ResScaleSlot();
   uint32_t s = slot.load(std::memory_order_relaxed);
   if (s != 0) return s;
-  const char* e = getenv("RESTUFF_RES_SCALE");
-  uint32_t v = e ? uint32_t(strtoul(e, nullptr, 10)) : 1u;
-  if (v < 1u) v = 1u;
-  if (v > 4u) v = 4u;
+  uint32_t v = 75u;  // 540p default
+  if (const char* e = getenv("RESTUFF_RES_SCALE")) {
+    std::string t(e);
+    for (auto& c : t) c = char(tolower((unsigned char)c));
+    if (t == "540p" || t == "540" || t == "960x540" || t == "qhd") v = 75u;
+    else if (t == "720p" || t == "720" || t == "1280x720" || t == "hd") v = 100u;
+    else if (t == "1080p" || t == "1080") v = 150u;
+    else if (t.find('.') != std::string::npos) {
+      double f = strtod(t.c_str(), nullptr);
+      if (f >= 0.5 && f <= 4.0) v = uint32_t(f * 100.0 + 0.5);
+    } else {
+      unsigned long n = strtoul(t.c_str(), nullptr, 10);
+      if (n >= 50 && n <= 400) v = uint32_t(n);
+      else if (n >= 1 && n <= 4) v = uint32_t(n) * 100u;
+    }
+  }
+  if (v < 50u) v = 50u;
+  if (v > 400u) v = 400u;
   slot.store(v, std::memory_order_relaxed);
   return v;
 }
+// Legacy integer scale (callers históricos): 1 = 100%, 2 = 200%, ... Para
+// pct < 100 retorna 1 — NÃO usar para dimensionar; usar SceneW()/SceneH()
+// ou ScaleF(). Mantido para o log e para o gate de VRAM.
+inline uint32_t SceneScale() { return (ResScalePct() + 99u) / 100u; }
+inline float ScaleF() { return float(ResScalePct()) / 100.0f; }
 // Colour (4 B/px) + D32S8 depth (8 B/px) for the main scene and every aux
-// surface, at the given scale. This is what the scale actually costs.
-inline uint64_t SceneAttachmentBytes(uint32_t s) {
-  return (uint64_t(TranslatedLayer::kAuxSurfaces) + 1ull) * uint64_t(kGuestW * s) *
-         uint64_t(kGuestH * s) * (4ull + 8ull);
+// surface, at the given percent. This is what the scale actually costs.
+inline uint64_t SceneAttachmentBytes(uint32_t pct) {
+  uint64_t w = (uint64_t(kGuestW) * pct + 50u) / 100u;
+  uint64_t h = (uint64_t(kGuestH) * pct + 50u) / 100u;
+  return (uint64_t(TranslatedLayer::kAuxSurfaces) + 1ull) * w * h * (4ull + 8ull);
 }
-inline uint32_t SceneW() { return kGuestW * SceneScale(); }
-inline uint32_t SceneH() { return kGuestH * SceneScale(); }
+inline uint32_t SceneW() { return (kGuestW * ResScalePct() + 50u) / 100u; }
+inline uint32_t SceneH() { return (kGuestH * ResScalePct() + 50u) / 100u; }
 // M3.97 STENCIL: the guest STENCIL-MASKS several passes (RB_DEPTHCONTROL bit0;
 // 7% of draws test stencil, 1.7% write it). We previously used a depth-ONLY
 // D32_SFLOAT attachment and never set stencilTestEnable, so every masked pass
@@ -4769,9 +4794,9 @@ bool EnsureSceneTarget(vk::VulkanDevice* dev) {
   // of device-local VRAM. Without this, an over-ambitious RESTUFF_RES_SCALE
   // fails an image allocation, EnsureSceneTarget returns false and the game
   // renders NOTHING -- a far worse outcome than quietly running at a lower
-  // scale. Runs before any other SceneScale() caller, so the lowered value is
-  // what the whole renderer sees.
-  if (SceneScale() > 1u) {
+  // scale. Runs before any other ResScalePct() caller, so the lowered value is
+  // what the whole renderer sees. Scales <= 100 (540p/720p) always fit.
+  if (ResScalePct() > 100u) {
     VkPhysicalDeviceMemoryProperties mp = {};
     dev->vulkan_instance()->functions().vkGetPhysicalDeviceMemoryProperties(
         dev->physical_device(), &mp);
@@ -4779,9 +4804,9 @@ bool EnsureSceneTarget(vk::VulkanDevice* dev) {
     for (uint32_t i = 0; i < mp.memoryHeapCount; ++i)
       if (mp.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
         vram += mp.memoryHeaps[i].size;
-    const uint32_t want = SceneScale();
+    const uint32_t want = ResScalePct();
     uint32_t s = want;
-    while (s > 1u && vram && SceneAttachmentBytes(s) > vram / 2) --s;
+    while (s > 100u && vram && SceneAttachmentBytes(s) > vram / 2) s -= 25u;
     if (s != want) {
       REXLOG_WARN(
           "[native_vk] M4.38 res_scale {} needs ~{} MB of attachments but VRAM is {} MB; "
@@ -5428,8 +5453,8 @@ bool EnsureSceneTarget(vk::VulkanDevice* dev) {
   // colour attachments at 4 B/px plus as many D32S8 depth attachments at 8 B/px,
   // all scaled by S^2. Log it: 16 aux surfaces make S=2 roughly 0.7 GB, which is
   // the number that decides whether a given machine can afford a scale at all.
-  REXLOG_INFO("[native_vk] M2.4 scene target ready ({}x{}, res_scale={}, ~{} MB attachments)",
-              SceneW(), SceneH(), SceneScale(), SceneAttachmentBytes(SceneScale()) >> 20);
+  REXLOG_INFO("[native_vk] M2.4 scene target ready ({}x{}, res_scale_pct={}, ~{} MB attachments)",
+              SceneW(), SceneH(), ResScalePct(), SceneAttachmentBytes(ResScalePct()) >> 20);
   return true;
 }
 
@@ -5780,7 +5805,7 @@ void RecordResolve(vk::VulkanDevice* dev, VkCommandBuffer cmd, const TransDrawRe
   // 2*p+1), so it is only valid at S=1. Above that the generalized f-factor
   // bounce below handles the downscale instead -- slower, but this path is a
   // perf optimization, not a correctness one.
-  if (s_depth_fill && SceneScale() == 1u && r.src_2x && is_depth &&
+  if (s_depth_fill && ResScalePct() == 100u && r.src_2x && is_depth &&
       tl.depth_fill_pipeline != VK_NULL_HANDLE &&
       src_img == tl.depth_img && rt->is_depth) {
     static const bool df_full_resolve = getenv("RESTUFF_FULL_RESOLVE") != nullptr;
@@ -6006,15 +6031,18 @@ void RecordResolve(vk::VulkanDevice* dev, VkCommandBuffer cmd, const TransDrawRe
                   r.di, r.surf, r.dbg_copyctl);
   }
   // M4.38: source-to-dest ratio. src_2x is the guest's own 2:1 resolve (the
-  // full-res volume/shaft chain); SceneScale() is our internal supersample.
+  // full-res volume/shaft chain); ScaleF() is our internal scale (1.0 = 720p,
+  // 0.75 = 540p Community Edition, 2.0 = 1440p supersample).
   // They compose: at S=2 a src_2x resolve reads a 4x rect. f == 1 means
   // src rect == dest rect and the plain copy path below still applies, so at
-  // S=1 without src_2x nothing here changes.
-  const uint32_t f = (r.src_2x ? 2u : 1u) * SceneScale();
+  // S=1 without src_2x nothing here changes. f != 1 (up or down) blits
+  // host<->guest with LINEAR (upscale 540p->720p resolve) — same path.
+  const float f = (r.src_2x ? 2.0f : 1.0f) * ScaleF();
   // M3.115 attempt 1 (REVERTED): blitting the live main D32S8 depth blacked
   // the whole frame (silent driver corruption; no fault logged). Depth
   // downsampling now happens via the 2x-decimating bounce copy below instead.
-  if (f > 1u && !is_depth) {
+  const bool need_scale_blit = (f < 0.999f || f > 1.001f);
+  if (need_scale_blit && !is_depth) {
     if (getenv("RESTUFF_OCCRECT")) {
       static std::atomic<int> s_or{40};
       if (s_or.fetch_sub(1, std::memory_order_relaxed) > 0)
@@ -6024,8 +6052,10 @@ void RecordResolve(vk::VulkanDevice* dev, VkCommandBuffer cmd, const TransDrawRe
     }
     PFN_vkCmdBlitImage s_blit_fn = BlitFn(dev);
     if (s_blit_fn) {
-      const uint32_t sx = std::min(f * rx, SceneW()), sy = std::min(f * ry, SceneH());
-      const uint32_t sw = std::min(f * cw, SceneW() - sx), sh = std::min(f * ch, SceneH() - sy);
+      const uint32_t sx = std::min(uint32_t(float(rx) * f), SceneW());
+      const uint32_t sy = std::min(uint32_t(float(ry) * f), SceneH());
+      const uint32_t sw = std::min(uint32_t(float(cw) * f), SceneW() - sx);
+      const uint32_t sh = std::min(uint32_t(float(ch) * f), SceneH() - sy);
       VkImageBlit bl = {};
       bl.srcSubresource = {aspect, 0, 0, 1};
       bl.srcOffsets[0] = {int32_t(sx), int32_t(sy), 0};
@@ -9348,7 +9378,7 @@ std::vector<TransDrawRec> PrepareTranslatedDraws(vk::VulkanDevice* dev) {
       // pgen-derived UV would land off-screen. pgen.w is the reciprocal scale
       // the FS multiplies gl_FragCoord by to get back to guest pixels; 1.0 at
       // S=1, so the shader arithmetic is unchanged by default.
-      r.pgen[3] = 1.0f / float(SceneScale());
+      r.pgen[3] = 100.0f / float(ResScalePct());
     }
     // M3.9x: pack each bound texture's fetch-constant EXP_ADJUST (signed) as
     // one byte per slot so the PS can scale fetch results by 2^exp_adjust.
@@ -9724,7 +9754,7 @@ void RecordTranslatedDraws(vk::VulkanDevice* dev, VkCommandBuffer cmd,
   // viewport registers), so the dedup compare stays in guest space and the
   // scale is applied only when handing the rect to Vulkan. At S=1 both are
   // identities and this is the pre-M4.38 code exactly.
-  const float kVpScale = float(SceneScale());
+  const float kVpScale = ScaleF();
   float cur_vp[4] = {0.0f, 0.0f, float(kGuestW), float(kGuestH)};
   int32_t cur_sc[4] = {0, 0, int32_t(kGuestW), int32_t(kGuestH)};
   // RESTUFF_SKIP_VS=<hex16,hex16,...> (DIAGNOSTIC): drop draws whose VS hash
@@ -9758,14 +9788,15 @@ void RecordTranslatedDraws(vk::VulkanDevice* dev, VkCommandBuffer cmd,
     if (std::memcmp(r.sc, cur_sc, sizeof(cur_sc)) != 0) {
       std::memcpy(cur_sc, r.sc, sizeof(cur_sc));
       // M4.38: clamp in guest space (the register values' own units) exactly as
-      // before, then scale the finished rect up to the host target.
-      const int32_t S = int32_t(SceneScale());
+      // before, then scale the finished rect to the host target (float —
+      // 540p 0.75x precisa de fração; 720p+ continua exato).
+      const float SF = ScaleF();
       const int32_t gx0 = std::clamp(cur_sc[0], 0, int32_t(kGuestW));
       const int32_t gy0 = std::clamp(cur_sc[1], 0, int32_t(kGuestH));
       const int32_t gx1 = std::clamp(cur_sc[0] + cur_sc[2], gx0, int32_t(kGuestW));
       const int32_t gy1 = std::clamp(cur_sc[1] + cur_sc[3], gy0, int32_t(kGuestH));
-      const int32_t x0 = gx0 * S, y0 = gy0 * S;
-      VkRect2D scissor = {{x0, y0}, {uint32_t((gx1 - gx0) * S), uint32_t((gy1 - gy0) * S)}};
+      const int32_t x0 = int32_t(float(gx0) * SF + 0.5f), y0 = int32_t(float(gy0) * SF + 0.5f);
+      VkRect2D scissor = {{x0, y0}, {uint32_t(float(gx1 - gx0) * SF + 0.5f), uint32_t(float(gy1 - gy0) * SF + 0.5f)}};
       if (scissor.extent.width == 0) scissor.extent.width = 1;
       if (scissor.extent.height == 0) scissor.extent.height = 1;
       df.vkCmdSetScissor(cmd, 0, 1, &scissor);

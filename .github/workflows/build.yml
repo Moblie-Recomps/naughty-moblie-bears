@@ -1,4 +1,4 @@
-name: Build APK (Naughty Bear ReStuff Android)
+name: Build APK (Naughty Mobile Bears Community Edition Android)
 
 on:
   push:

@@ -55,6 +55,9 @@ class VirtualGamepadView(
     private var opacity: Float,
     private var scale: Float,
     private var haptics: Boolean,
+    private var deadzone: Float = 0.12f,
+    private var sensitivity: Float = 1f,
+    private var eightWay: Boolean = true,
 ) : View(context) {
 
     // ------------------------------------------------------------------
@@ -369,23 +372,33 @@ class VirtualGamepadView(
     }
 
     /**
-     * D-pad 8 direções: octante do ângulo do toque em torno do centro
+     * D-pad 8 ou 4 direções: octante do ângulo do toque em torno do centro
      * (0° = leste, -90° = norte; setores de 45°). Diagonais acionam dois
-     * bits — o joystick virtual interpreta a combinação como diagonal.
+     * bits no modo 8 vias — o joystick virtual interpreta a combinação
+     * como diagonal. No modo 4 vias a direção dominante vence sozinha
+     * (melhor para menus/lutas em telas pequenas).
      */
     private fun dpadMaskAt(pad: Pad, x: Float, y: Float): Int {
         val cx = pad.cx * viewW
         val cy = pad.cy * viewH
         val angle = Math.toDegrees(atan2(y - cy, x - cx).toDouble())
+        if (!eightWay) {
+            return when {
+                angle >= 135 || angle < -135 -> BIT_DLEFT
+                angle >= 45 -> BIT_DDOWN
+                angle >= -45 -> BIT_DRIGHT
+                else -> BIT_DUP
+            }.let { 1 shl it }
+        }
         return when {
-            angle >= 157.5 || angle < -157.5 -> BIT_DLEFT
-            angle >= 112.5 -> BIT_DLEFT or BIT_DDOWN
-            angle >= 67.5 -> BIT_DDOWN
-            angle >= 22.5 -> BIT_DDOWN or BIT_DRIGHT
-            angle >= -22.5 -> BIT_DRIGHT
-            angle >= -67.5 -> BIT_DRIGHT or BIT_DUP
-            angle >= -112.5 -> BIT_DUP
-            else -> BIT_DUP or BIT_DLEFT
+            angle >= 157.5 || angle < -157.5 -> 1 shl BIT_DLEFT
+            angle >= 112.5 -> (1 shl BIT_DLEFT) or (1 shl BIT_DDOWN)
+            angle >= 67.5 -> 1 shl BIT_DDOWN
+            angle >= 22.5 -> (1 shl BIT_DDOWN) or (1 shl BIT_DRIGHT)
+            angle >= -22.5 -> 1 shl BIT_DRIGHT
+            angle >= -67.5 -> (1 shl BIT_DRIGHT) or (1 shl BIT_DUP)
+            angle >= -112.5 -> 1 shl BIT_DUP
+            else -> (1 shl BIT_DUP) or (1 shl BIT_DLEFT)
         }
     }
 
@@ -401,15 +414,25 @@ class VirtualGamepadView(
                 dy = dy / len * st.radiusPx
             }
             st.thumbX = dx; st.thumbY = dy
+            // Zona morta + sensibilidade (Community Edition): magnitude
+            // abaixo de deadzone zera; acima remapeia 0..1 com ganho
+            // exponencial (sensitivity 0.5 suave .. 2.0 agressivo).
+            val mag = hypot(dx, dy) / st.radiusPx
+            val dz = deadzone.coerceIn(0f, 0.3f)
+            val gain = sensitivity.coerceIn(0.5f, 2f)
+            val shaped = if (mag <= dz) 0f
+                else Math.pow(((mag - dz) / (1f - dz)).toDouble(), gain.toDouble()).toFloat()
+            val nx = if (mag > 0f) dx / (mag * st.radiusPx) * shaped else 0f
+            val ny = if (mag > 0f) dy / (mag * st.radiusPx) * shaped else 0f
             if (stickL === st) {
-                lx = (dx / st.radiusPx * 32767f).toInt().coerceIn(-32768, 32767)
-                ly = (dy / st.radiusPx * 32767f).toInt().coerceIn(-32768, 32767)
+                lx = (nx * 32767f).toInt().coerceIn(-32768, 32767)
+                ly = (ny * 32767f).toInt().coerceIn(-32768, 32767)
                 // Pressionar o stick (L3) só com "clique" não é detectável em touch —
                 // LS fica ativo enquanto o polegar está deslocado (padrão em ports).
                 setButtonBit(BIT_LS, abs(lx) > 8000 || abs(ly) > 8000)
             } else {
-                rx = (dx / st.radiusPx * 32767f).toInt().coerceIn(-32768, 32767)
-                ry = (dy / st.radiusPx * 32767f).toInt().coerceIn(-32768, 32767)
+                rx = (nx * 32767f).toInt().coerceIn(-32768, 32767)
+                ry = (ny * 32767f).toInt().coerceIn(-32768, 32767)
                 // RS (R3) NÃO é auto-ativado: em console o clique do analógico
                 // direito costuma ser "reset de câmera" — dispará-lo a cada pan
                 // lutaria contra o jogador. Sem análogo touch para clique real.
@@ -550,6 +573,19 @@ class VirtualGamepadView(
 
     fun setHaptics(v: Boolean) {
         haptics = v
+    }
+
+    fun setDeadzone(v: Float) {
+        deadzone = v.coerceIn(0f, 0.3f)
+    }
+
+    fun setSensitivity(v: Float) {
+        sensitivity = v.coerceIn(0.5f, 2f)
+    }
+
+    fun setEightWay(v: Boolean) {
+        eightWay = v
+        invalidate()
     }
 
     fun shutdown() {

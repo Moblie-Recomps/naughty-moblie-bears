@@ -179,14 +179,14 @@ class QuickSettingsDialog(
 
         // ---- Cabeçalho (fixo) ----------------------------------------------
         root.addView(TextView(c).apply {
-            text = "AJUSTES RÁPIDOS"
+            text = "QUICK SETTINGS"
             setTextColor(COL_AMBER)
             textSize = 15f
             letterSpacing = 0.10f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         })
         root.addView(TextView(c).apply {
-            text = "Mudanças aplicam na hora, o jogo segue rodando"
+            text = "Changes apply instantly, the game keeps running"
             setTextColor(COL_TEXT_DIM)
             textSize = 12f
             layoutParams = LinearLayout.LayoutParams(
@@ -201,31 +201,31 @@ class QuickSettingsDialog(
         body.addView(hairline(c))
 
         // Seção: Controles
-        body.addView(sectionLabel(c, "CONTROLES"))
+        body.addView(sectionLabel(c, "CONTROLS"))
         addRow(body, switchRow(
-            c, "Controles na tela", "Botões virtuais sobre o jogo",
+            c, "On-screen controls", "Virtual buttons over the game",
             current.showOverlayControls
         ) { checked -> mutate(current.copy(showOverlayControls = checked)) })
         addRow(body, sliderRow(
-            c, "Opacidade do overlay",
+            c, "Overlay opacity",
             (current.overlayOpacity * 100).roundToInt().coerceIn(20, 100),
             20, 100
         ) { pct -> mutate(current.copy(overlayOpacity = pct / 100f)) })
         addRow(body, sliderRow(
-            c, "Tamanho dos controles",
+            c, "Control size",
             (current.overlayScale * 100).roundToInt().coerceIn(70, 160),
             70, 160
         ) { pct -> mutate(current.copy(overlayScale = pct / 100f)) })
         addRow(body, switchRow(
-            c, "Vibração", "Feedback tátil dos controles virtuais",
+            c, "Vibration", "Haptic feedback for virtual controls",
             current.hapticFeedback
         ) { checked -> mutate(current.copy(hapticFeedback = checked)) })
 
         // Seção: Desempenho
-        body.addView(sectionLabel(c, "DESEMPENHO"))
+        body.addView(sectionLabel(c, "PERFORMANCE"))
         addRow(body, fpsLimitRow(c))
         addRow(body, switchRow(
-            c, "Contador de FPS", "Quadros por segundo reais do motor, sobre o jogo",
+            c, "FPS counter", "Real engine frames per second, over the game",
             current.showFpsCounter
         ) { checked -> mutate(current.copy(showFpsCounter = checked)) })
 
@@ -244,7 +244,7 @@ class QuickSettingsDialog(
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(c, 50f)
             ).apply { topMargin = dp(c, 10f) }
-            text = "Voltar ao jogo"
+            text = "Back to game"
             gravity = Gravity.CENTER
             setTextColor(COL_INK)
             textSize = 14f
@@ -263,13 +263,13 @@ class QuickSettingsDialog(
                 layoutParams = LinearLayout.LayoutParams(
                     0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
                 )
-                text = "4 dedos em qualquer lugar reabrem este painel"
+                text = "4 fingers anywhere reopen this panel"
                 setTextColor(COL_TEXT_DIM)
                 textSize = 11f
                 maxLines = 2
             })
             addView(TextView(c).apply {
-                text = "Sair para a tela inicial"
+                text = "Exit to home screen"
                 setTextColor(COL_AMBER_DIM)
                 textSize = 12f
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
@@ -417,9 +417,9 @@ class QuickSettingsDialog(
                     "sans-serif-medium", if (selected) Typeface.BOLD else Typeface.NORMAL
                 )
                 chip.contentDescription = if (opt == FpsLimitOption.UNLIMITED) {
-                    "Limite de FPS ilimitado"
+                    "Unlimited FPS cap"
                 } else {
-                    "Limite de FPS em ${opt.label} quadros por segundo"
+                    "FPS cap at ${opt.label} frames per second"
                 }
                 // Estado selecionado para TalkBack (focus/a11y) além do
                 // contentDescription.
@@ -445,7 +445,7 @@ class QuickSettingsDialog(
                 background = pill(c, Color.TRANSPARENT, COL_AMBER_DIM, radius = 12f)
                 setOnClickListener {
                     if (current.fpsLimit != opt) {
-                        mutate(current.copy(fpsLimit = opt))
+                        mutate(current.copy(fpsLimit = opt, devicePresetName = null))
                         repaint()
                     }
                 }
@@ -463,13 +463,13 @@ class QuickSettingsDialog(
             setPadding(dp(c, 14f), dp(c, 10f), dp(c, 14f), dp(c, 8f))
             background = rowBg(c)
             addView(TextView(c).apply {
-                text = "Limite de FPS"
+                text = "FPS cap"
                 setTextColor(COL_TEXT)
                 textSize = 14f
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             })
             addView(TextView(c).apply {
-                text = "Aplica na hora — também vale nas Configurações do app"
+                text = "Applies instantly — also saved to the app Settings"
                 setTextColor(COL_TEXT_DIM)
                 textSize = 12f
                 layoutParams = LinearLayout.LayoutParams(
@@ -526,13 +526,13 @@ class ExitConfirmDialog(
         }
 
         root.addView(TextView(c).apply {
-            text = "Voltar para a tela inicial?"
+            text = "Back to the home screen?"
             setTextColor(COL_TEXT)
             textSize = 16f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         })
         root.addView(TextView(c).apply {
-            text = "O jogo será encerrado e você voltará ao menu do port. O progresso não salvo será perdido."
+            text = "The game will close and you will return to the port menu. Unsaved progress will be lost."
             setTextColor(COL_TEXT_DIM)
             textSize = 13f
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -553,7 +553,7 @@ class ExitConfirmDialog(
                 layoutParams = LinearLayout.LayoutParams(0, dp(c, 48f), 1f).apply {
                     marginEnd = dp(c, 10f)
                 }
-                text = "Continuar jogando"
+                text = "Keep playing"
                 gravity = Gravity.CENTER
                 setTextColor(COL_AMBER)
                 textSize = 13f
@@ -564,7 +564,7 @@ class ExitConfirmDialog(
             // Voltar (âmbar sólido) — sai para o launcher.
             addView(TextView(c).apply {
                 layoutParams = LinearLayout.LayoutParams(0, dp(c, 48f), 1f)
-                text = "Voltar"
+                text = "Exit"
                 gravity = Gravity.CENTER
                 setTextColor(COL_INK)
                 textSize = 13f

@@ -1,4 +1,4 @@
-# Release do APK (Naughty Bear ReStuff Android)
+# Release do APK (Naughty Mobile Bears Community Edition Android)
 #
 # Pipeline de release dedicado (baseado no build.yml):
 #   1. Mesma cadeia de validação do build.yml (testes rápidos ANTES do build
@@ -21,7 +21,7 @@
 # contador por workflow) e monotônico no tempo — segunda release no mesmo
 # dia ganha sufixo +N.
 
-name: Release APK (Naughty Bear ReStuff Android)
+name: Release APK (Naughty Mobile Bears Community Edition Android)
 
 on:
   workflow_dispatch:
@@ -31,7 +31,7 @@ on:
         required: true
         default: "1.1.0"
       release_title:
-        description: "Título da release (vazio = 'Naughty Bear ReStuff Android v<versão>')"
+        description: "Título da release (vazio = 'Naughty Mobile Bears Community Edition Android v<versão>')"
         required: false
         default: ""
   push:
@@ -72,7 +72,7 @@ jobs:
             TITLE=""
           fi
           [ -n "$VERSION" ] || { echo "ERRO: versão vazia"; exit 1; }
-          [ -n "$TITLE" ] || TITLE="Naughty Bear ReStuff Android v${VERSION}"
+          [ -n "$TITLE" ] || TITLE="Naughty Mobile Bears Community Edition Android v${VERSION}"
           # versionCode: AAAAMMDD*100 + N (N = nº do run deste workflow).
           # Ex: 2026091301 — acima de qualquer run number do build.yml.
           VC=$(( $(date +%Y%m%d) * 100 + (GITHUB_RUN_NUMBER % 100) ))

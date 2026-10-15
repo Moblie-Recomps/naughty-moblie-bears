@@ -212,13 +212,13 @@ class DataSelectionViewModel(application: Application) : AndroidViewModel(applic
                 notXboxDisc != null -> {
                     _uiState.value = DataSelectionUiState(DataPhase.NotFound)
                     toast(
-                        "\"${notXboxDisc.displayName}\" não é uma imagem de disco Xbox 360 " +
-                            "(GDFX/XDVDFS). Selecione o .iso do jogo."
+                        "\"${notXboxDisc.displayName}\" is not an Xbox 360 disc image " +
+                            "(GDFX/XDVDFS). Please select the game .iso."
                     )
                 }
                 else -> {
                     _uiState.value = DataSelectionUiState(DataPhase.NotFound)
-                    toast("Não foi possível abrir o arquivo selecionado.")
+                    toast("Could not open the selected file.")
                 }
             }
         }
@@ -248,8 +248,8 @@ class DataSelectionViewModel(application: Application) : AndroidViewModel(applic
             if (dir == null || !dir.isDirectory) {
                 _uiState.value = DataSelectionUiState(DataPhase.NotFound)
                 toast(
-                    "Não foi possível acessar a pasta selecionada. Escolha uma pasta " +
-                        "do armazenamento interno do aparelho."
+                    "Could not access the selected folder. Pick a folder " +
+                        "from the device internal storage."
                 )
                 return@launch
             }
@@ -257,8 +257,8 @@ class DataSelectionViewModel(application: Application) : AndroidViewModel(applic
             if (xex == null) {
                 _uiState.value = DataSelectionUiState(DataPhase.NotFound)
                 toast(
-                    "A pasta \"${dir.name}\" não contém o Default.xex na raiz. " +
-                        "Selecione a pasta extraída do jogo (a que tem o Default.xex)."
+                    "The folder \"${dir.name}\" has no Default.xex at its root. " +
+                        "Select the extracted game folder (the one with Default.xex)."
                 )
                 return@launch
             }
@@ -358,8 +358,8 @@ class DataSelectionViewModel(application: Application) : AndroidViewModel(applic
                     withContext(Dispatchers.IO) { GamePaths.setIsoSource(app, null) }
                     _uiState.value = DataSelectionUiState(DataPhase.Idle)
                     toast(
-                        "O ISO não está mais acessível (arquivo movido ou permissão " +
-                            "revogada). Selecione o arquivo novamente."
+                        "The ISO is no longer accessible (file moved or permission " +
+                            "revoked). Please select the file again."
                     )
                 }
             }
@@ -374,13 +374,13 @@ class DataSelectionViewModel(application: Application) : AndroidViewModel(applic
                 !GamePaths.extractMarker(app).exists()
             ) {
                 toast(
-                    "Os dados do jogo ainda estão sendo preparados. Aguarde alguns " +
-                        "instantes e toque em Iniciar Jogo de novo."
+                    "Game data is still being prepared. Wait a moment " +
+                        "and tap Start Game again."
                 )
             } else {
                 toast(
-                    "Default.xex não encontrado em ${root.absolutePath}. " +
-                        "Selecione a pasta do jogo novamente."
+                    "Default.xex not found in ${root.absolutePath}. " +
+                        "Please select the game folder again."
                 )
             }
             return

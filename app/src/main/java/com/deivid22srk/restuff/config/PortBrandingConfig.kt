@@ -1,6 +1,6 @@
 /*
  * ============================================================================
- *  BRANDING DO PORT NAUGHTY BEAR RESTUFF
+ *  BRANDING DO PORT NAUGHTY MOBILE BEARS COMMUNITY EDITION
  * ============================================================================
  *
  * Identidade visual e textual do port: nome, paleta âmbar do urso, arte de
@@ -235,7 +235,7 @@ data class PortBrandingConfig(
 
 /**
  * ===========================================================================
- *  VALORES DO PORT NAUGHTY BEAR RESTUFF
+ *  VALORES DO PORT NAUGHTY MOBILE BEARS COMMUNITY EDITION
  * ===========================================================================
  *  Paleta âmbar do urso de pelúcia sobre a floresta noturna da arte de
  *  fundo, brasas subindo (ecoam os vagalumes/brasas da arte) e detecção do
@@ -246,8 +246,8 @@ object PortBranding {
 
     val config: PortBrandingConfig = PortBrandingConfig(
         // ---- Identidade ---------------------------------------------------
-        portTitle = "NAUGHTY BEAR",
-        portSubtitle = "RESTUFF · EDIÇÃO GOLD",
+        portTitle = "NAUGHTY MOBILE BEARS",
+        portSubtitle = "COMMUNITY EDITION",
         showLogo = true,
 
         // ---- Paleta -------------------------------------------------------
@@ -279,69 +279,40 @@ object PortBranding {
         showTechChip = true,
 
         // ---- Textos -------------------------------------------------------
-        labelSelectData = "Selecionar ISO",
-        labelStartGame = "Iniciar Jogo",
-        labelSelectFolder = "Selecionar Pasta Extraída",
-        labelValidating = "Validando…",
-        labelIdle = "Nenhum dado selecionado",
-        labelIdleHint = "Toque em Selecionar ISO e escolha a imagem do jogo — ela roda direto de onde está, sem cópia.",
-        labelNotFound = "Dados não encontrados",
-        labelNotFoundHint = "Selecione o .iso do jogo ou a pasta que contém %s",
-        labelFound = "Dados prontos",
-        labelFoundFile = "Pronto para iniciar: %s",
-        labelPermissionError = "Permissão negada",
-        labelClose = "Fechar",
-        labelToggleParticles = "Partículas ambiente",
-        labelToggleMotion = "Reduzir movimento",
+        labelSelectData = "Select ISO",
+        labelStartGame = "Start Game",
+        labelSelectFolder = "Select Extracted Folder",
+        labelValidating = "Validating…",
+        labelIdle = "No game data selected",
+        labelIdleHint = "Tap Select ISO and pick the game image — it runs in place, nothing is copied.",
+        labelNotFound = "Game data not found",
+        labelNotFoundHint = "Select the game .iso or the folder containing %s",
+        labelFound = "Game ready",
+        labelFoundFile = "Ready to launch: %s",
+        labelPermissionError = "Permission denied",
+        labelClose = "Close",
+        labelToggleParticles = "Ambient particles",
+        labelToggleMotion = "Reduce motion",
 
         // ---- Tela de configurações ----------------------------------------
-        labelSettingsTitle = "Configurações",
-        labelSettingsSubtitle = "Ajustes do port para o seu aparelho",
-        labelSettingsFooter = "Motor, driver e controles são aplicados na próxima inicialização do jogo; efeitos da tela inicial valem na hora.",
-        labelClearSelection = "Limpar seleção salva",
+        labelSettingsTitle = "Settings",
+        labelSettingsSubtitle = "Port settings for your device",
+        labelSettingsFooter = "Engine, driver and controls apply on the next game launch; home-screen effects apply instantly.",
+        labelClearSelection = "Clear saved selection",
 
         // ---- Créditos / links do portador ----------------------------------
-        portedByLabel = "Portado por Hailgames",
+        portedByLabel = "Ported by Hailgames",
         creditsTitle = "Hailgames",
-        creditsSubtitle = "Ports Android · Naughty Bear ReStuff",
-        creditsFooter = "Recompilação do Naughty Bear Gold Edition (Xbox 360) para Android com rexglue-SDK. Requer o arquivo Default.xex e conteúdo do jogo extraído pelo app.",
-        links = listOf(
-            PortLink(
-                label = "Canal no YouTube",
-                description = "@hail-games1",
-                url = "https://youtube.com/@hail-games1?si=rREmvIBB6s98N-2m",
-                iconKey = "youtube",
-                tint = Color(0xFFFF5147)
-            ),
-            PortLink(
-                label = "GitHub",
-                description = "deivid22srk · todos os repositórios",
-                url = "https://github.com/deivid22srk?tab=repositories",
-                iconKey = "github",
-                tint = Color(0xFFE8EAF2)
-            ),
-            PortLink(
-                label = "Telegram",
-                description = "@hailgames2",
-                url = "https://t.me/hailgames2",
-                iconKey = "telegram",
-                tint = Color(0xFF41B3E3)
-            ),
-            PortLink(
-                label = "Projeto base deste Port",
-                description = "NaughtyBear_ReStuff (rexglue-SDK)",
-                url = "https://github.com/MaxDeadBear/NaughtyBear_ReStuff",
-                iconKey = "project",
-                tint = Color(0xFFF2C14E)
-            ),
-        ),
+        creditsSubtitle = "Android ports · Naughty Mobile Bears Community Edition",
+        creditsFooter = "Naughty Mobile Bears Community Edition — a recompilation of Naughty Bear Gold Edition (Xbox 360) for Android, built with rexglue-SDK. Original ReStuff fork by MaxDeadBear. Requires the Default.xex file and game content you provide.",
+        links = emptyList(),
 
         // ---- Acessibilidade ------------------------------------------------
-        contentDescPlay = "Iniciar",
-        contentDescSettings = "Abrir configurações",
-        contentDescFolder = "Selecionar outra pasta de dados",
-        contentDescBackground = "Arte de fundo do port",
-        contentDescBack = "Voltar para a tela inicial",
-        contentDescCredits = "Abrir links do portador",
+        contentDescPlay = "Start",
+        contentDescSettings = "Open settings",
+        contentDescFolder = "Select a different data folder",
+        contentDescBackground = "Port background art",
+        contentDescBack = "Back to the home screen",
+        contentDescCredits = "About this port",
     )
 }

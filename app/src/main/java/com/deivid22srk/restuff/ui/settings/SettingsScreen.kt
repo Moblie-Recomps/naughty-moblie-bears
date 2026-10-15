@@ -71,9 +71,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.deivid22srk.restuff.config.PortBranding
 import com.deivid22srk.restuff.data.GpuDriverManager
+import com.deivid22srk.restuff.settings.DevicePreset
 import com.deivid22srk.restuff.settings.FpsLimitOption
 import com.deivid22srk.restuff.settings.PortSettings
 import com.deivid22srk.restuff.settings.PortSettingsViewModel
+import com.deivid22srk.restuff.settings.ResOption
 import com.deivid22srk.restuff.ui.theme.PortPalette
 import com.deivid22srk.restuff.ui.theme.PortType
 import com.deivid22srk.restuff.ui.components.portClickable
@@ -179,11 +181,11 @@ fun SettingsScreen(
             // Aplicado de verdade: fps_cap e vblank_hz no restuff.toml
             // gerado pelo GameActivity antes do SDL_main. O contador de
             // FPS lê os presents Vulkan reais (JNI nativeGetPresentCount).
-            SectionHeader("Desempenho")
+            SectionHeader("Performance")
 
             ToggleRow(
-                label = "Contador de FPS",
-                subtitle = "Quadros por segundo reais do motor, sobre o jogo",
+                label = "FPS counter",
+                subtitle = "Real engine frames per second, over the game",
                 checked = settings.showFpsCounter,
                 onChange = { checked ->
                     onSettingsChange { it.copy(showFpsCounter = checked) }
@@ -191,29 +193,72 @@ fun SettingsScreen(
             )
             Hairline()
 
-            SettingLabel("Limite de FPS")
+            SettingLabel("FPS cap")
             Spacer(Modifier.height(10.dp))
             ChoiceChipsRow(
                 options = FpsLimitOption.entries.toList(),
                 selected = settings.fpsLimit,
                 label = { it.label }
             ) { option ->
-                onSettingsChange { it.copy(fpsLimit = option) }
+                onSettingsChange { it.copy(fpsLimit = option, devicePresetName = null) }
             }
 
             Spacer(Modifier.height(18.dp))
             SliderRow(
-                label = "Vblank sintético",
+                label = "Synthetic vblank",
                 valueText = "${settings.vblankHz} Hz",
                 value = settings.vblankHz.toFloat(),
                 valueRange = 30f..240f,
                 steps = 20
             ) { value ->
-                onSettingsChange { it.copy(vblankHz = value.roundToInt()) }
+                onSettingsChange { it.copy(vblankHz = value.roundToInt(), devicePresetName = null) }
             }
             Text(
-                text = "Relógio de vídeo do motor — ajuste fino para painéis " +
-                    "de alta taxa de atualização.",
+                text = "Engine video clock — fine tuning for high " +
+                    "refresh-rate panels.",
+                color = PortPalette.textTertiary,
+                style = PortType.rowSub
+            )
+
+            Spacer(Modifier.height(18.dp))
+            SettingLabel("Internal resolution (requires restarting the game)")
+            Spacer(Modifier.height(10.dp))
+            ChoiceChipsRow(
+                options = ResOption.entries.toList(),
+                selected = settings.resOption,
+                label = { "${it.label} · ${it.w}x${it.h}" }
+            ) { option ->
+                onSettingsChange { it.copy(resOption = option, devicePresetName = null) }
+            }
+            Text(
+                text = "540p (960x540) is the Community Edition default — ~44% fewer " +
+                    "fragments than 720p on weak Mali/Adreno GPUs.",
+                color = PortPalette.textTertiary,
+                style = PortType.rowSub
+            )
+
+            Spacer(Modifier.height(18.dp))
+            SettingLabel("Playtest device (applies 540p + target FPS)")
+            Spacer(Modifier.height(10.dp))
+            ChoiceChipsRow(
+                options = DevicePreset.entries.toList(),
+                selected = DevicePreset.entries.firstOrNull { it.name == settings.devicePresetName },
+                label = { it.label }
+            ) { preset ->
+                onSettingsChange {
+                    it.copy(
+                        fpsLimit = preset.fps,
+                        vblankHz = preset.vblank,
+                        resOption = preset.res,
+                        devicePresetName = preset.name,
+                        textureMods = false,
+                    )
+                }
+            }
+            val activePreset = DevicePreset.entries.firstOrNull { it.name == settings.devicePresetName }
+            Text(
+                text = activePreset?.let { "${it.label}: ${it.desc} · ${it.res.label} ${it.res.w}x${it.res.h}" }
+                    ?: "No preset applied — manual tuning.",
                 color = PortPalette.textTertiary,
                 style = PortType.rowSub
             )
@@ -221,11 +266,11 @@ fun SettingsScreen(
             SectionGap()
 
             // ========================= CONTROLES =========================
-            SectionHeader("Controles")
+            SectionHeader("Controls")
 
             ToggleRow(
-                label = "Overlay na tela",
-                subtitle = "Botões virtuais sobre o jogo",
+                label = "On-screen overlay",
+                subtitle = "Virtual buttons over the game",
                 checked = settings.showOverlayControls,
                 onChange = { checked ->
                     onSettingsChange { it.copy(showOverlayControls = checked) }
@@ -234,7 +279,7 @@ fun SettingsScreen(
             Hairline()
 
             SliderRow(
-                label = "Opacidade do overlay",
+                label = "Overlay opacity",
                 valueText = "${(settings.overlayOpacity * 100).roundToInt()}%",
                 value = settings.overlayOpacity,
                 valueRange = 0.2f..1f,
@@ -245,8 +290,8 @@ fun SettingsScreen(
             Hairline()
 
             ToggleRow(
-                label = "Vibração",
-                subtitle = "Feedback tátil dos controles virtuais",
+                label = "Vibration",
+                subtitle = "Haptic feedback for virtual controls",
                 checked = settings.hapticFeedback,
                 onChange = { checked ->
                     onSettingsChange { it.copy(hapticFeedback = checked) }
@@ -255,7 +300,7 @@ fun SettingsScreen(
             Hairline()
 
             SliderRow(
-                label = "Tamanho dos controles",
+                label = "Control size",
                 valueText = "${(settings.overlayScale * 100).roundToInt()}%",
                 value = settings.overlayScale,
                 valueRange = 0.7f..1.6f,
@@ -263,15 +308,47 @@ fun SettingsScreen(
             ) { value ->
                 onSettingsChange { it.copy(overlayScale = value) }
             }
+            Hairline()
+
+            SliderRow(
+                label = "Stick deadzone",
+                valueText = "${(settings.stickDeadzone * 100).roundToInt()}%",
+                value = settings.stickDeadzone,
+                valueRange = 0f..0.3f,
+                steps = 5
+            ) { value ->
+                onSettingsChange { it.copy(stickDeadzone = value) }
+            }
+            Hairline()
+
+            SliderRow(
+                label = "Stick sensitivity",
+                valueText = "${(settings.stickSensitivity * 100).roundToInt()}%",
+                value = settings.stickSensitivity,
+                valueRange = 0.5f..2f,
+                steps = 14
+            ) { value ->
+                onSettingsChange { it.copy(stickSensitivity = value) }
+            }
+            Hairline()
+
+            ToggleRow(
+                label = "8-way D-pad",
+                subtitle = "Off = 4-way (menus and small screens)",
+                checked = settings.dpadEightWay,
+                onChange = { checked ->
+                    onSettingsChange { it.copy(dpadEightWay = checked) }
+                }
+            )
 
             SectionGap()
 
             // ========================= MOTOR RESTUFF =====================
-            SectionHeader("Motor ReStuff")
+            SectionHeader("ReStuff Engine")
 
             ToggleRow(
-                label = "Desbloquear 60 FPS",
-                subtitle = "Força o jogo a rodar a 60 quadros por segundo",
+                label = "Unlock 60 FPS",
+                subtitle = "Forces the game to run at 60 frames per second",
                 checked = settings.unlock60Fps,
                 onChange = { checked ->
                     onSettingsChange { it.copy(unlock60Fps = checked) }
@@ -281,7 +358,7 @@ fun SettingsScreen(
 
             ToggleRow(
                 label = "Unlock All (cheat)",
-                subtitle = "Libera todos os trajes e conteúdos extras",
+                subtitle = "Unlocks all costumes and bonus content",
                 checked = settings.unlockAllCheat,
                 onChange = { checked ->
                     onSettingsChange { it.copy(unlockAllCheat = checked) }
@@ -290,8 +367,8 @@ fun SettingsScreen(
             Hairline()
 
             ToggleRow(
-                label = "Texture Mods (packs HD)",
-                subtitle = "Usa packs de texturas em HD da pasta texture_mods",
+                label = "Texture Mods (HD packs)",
+                subtitle = "Uses HD texture packs from the texture_mods folder",
                 checked = settings.textureMods,
                 onChange = { checked ->
                     onSettingsChange { it.copy(textureMods = checked) }
@@ -301,11 +378,11 @@ fun SettingsScreen(
             SectionGap()
 
             // =========================== EFEITOS =========================
-            SectionHeader("Tela inicial")
+            SectionHeader("Home screen")
 
             ToggleRow(
                 label = config.labelToggleMotion,
-                subtitle = "Desativa as animações de entrada",
+                subtitle = "Disables entrance animations",
                 checked = settings.reduceMotionOverride,
                 onChange = { checked ->
                     onSettingsChange { it.copy(reduceMotionOverride = checked) }
@@ -315,14 +392,14 @@ fun SettingsScreen(
             SectionGap()
 
             // ======================== DADOS DO JOGO ======================
-            SectionHeader("Dados do jogo")
+            SectionHeader("Game data")
 
             SelectionSummary(selectionState)
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Arquivos esperados: " +
+                text = "Expected files: " +
                     config.expectedDataFiles.joinToString(", ") +
-                    config.acceptableExtensions.joinToString(", ", prefix = " · extensões: "),
+                    config.acceptableExtensions.joinToString(", ", prefix = " · extensions: "),
                 color = PortPalette.textTertiary,
                 style = PortType.mono
             )
@@ -416,7 +493,7 @@ private fun SettingLabel(text: String) {
 @Composable
 private fun <T> ChoiceChipsRow(
     options: List<T>,
-    selected: T,
+    selected: T?,
     label: (T) -> String = { it.toString() },
     onSelect: (T) -> Unit,
 ) {
@@ -544,11 +621,11 @@ private fun SliderRow(
 private fun SelectionSummary(state: DataSelectionUiState) {
     val accent = PortBranding.config.accent
     val (label, color) = when (val phase = state.phase) {
-        is DataPhase.Found -> "Pronto · ${phase.fileName}" to PortPalette.success
-        is DataPhase.Validating -> "Validando…" to accent
-        is DataPhase.NotFound -> "A seleção salva não contém os dados esperados." to PortPalette.error
-        is DataPhase.PermissionError -> "Permissão de leitura revogada." to PortPalette.error
-        is DataPhase.Idle -> "Nenhuma seleção salva." to PortPalette.textSecondary
+        is DataPhase.Found -> "Ready · ${phase.fileName}" to PortPalette.success
+        is DataPhase.Validating -> "Validating…" to accent
+        is DataPhase.NotFound -> "The saved selection has none of the expected data." to PortPalette.error
+        is DataPhase.PermissionError -> "Read permission revoked." to PortPalette.error
+        is DataPhase.Idle -> "No saved selection." to PortPalette.textSecondary
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -645,8 +722,8 @@ private fun DriversSection() {
                 withContext(Dispatchers.IO) { GpuDriverManager.setActive(context, driver.id) }
                 drivers = GpuDriverManager.list(context)
                 activeId = driver.id
-                message = "Driver “${driver.name}” v${driver.version} importado e ativado — " +
-                    "será usado no próximo início do jogo."
+                message = "Driver “${driver.name}” v${driver.version} imported and enabled — " +
+                    "it will be used on the next game launch."
                 isError = false
             } catch (e: GpuDriverManager.DriverImportException) {
                 // [17-e1 #5] se o import deu certo e só o setActive falhou,
@@ -656,7 +733,7 @@ private fun DriversSection() {
                 isError = true
             } catch (e: Exception) {
                 drivers = GpuDriverManager.list(context)
-                message = "Falha ao importar driver — tente novamente."
+                message = "Failed to import driver — please try again."
                 isError = true
             }
             importing = false
@@ -664,16 +741,16 @@ private fun DriversSection() {
     }
 
     Column {
-        SectionHeader("Drivers gráficos (Turnip / Vortek)")
+        SectionHeader("Graphics drivers (Turnip / Vortek)")
 
         Text(
-            text = "Importe um driver Vulkan (.zip) para melhorar a " +
-                "compatibilidade e o desempenho em GPUs Adreno. Para GPUs " +
-                "não-Adreno (Mali e outras), experimente a camada Vortek — " +
-                "executa o jogo sobre o driver do sistema com correções de " +
-                "compatibilidade. O driver é usado no próximo início do jogo; " +
-                "se falhar, o motor volta ao driver do sistema e o motivo " +
-                "aparece no Diagnóstico.",
+            text = "Import a Vulkan driver (.zip) to improve compatibility " +
+                "and performance on Adreno GPUs. For non-Adreno GPUs (Mali " +
+                "and others), try the Vortek layer — it runs the game on " +
+                "the system driver with compatibility fixes. The driver is " +
+                "used on the next game launch; if it fails, the engine falls " +
+                "back to the system driver and the reason shows up under " +
+                "Diagnostics.",
             color = PortPalette.textSecondary,
             style = PortType.rowSub
         )
@@ -681,8 +758,8 @@ private fun DriversSection() {
         Spacer(Modifier.height(14.dp))
 
         DriverOptionRow(
-            title = "Padrão do sistema",
-            subtitle = "Vulkan do fabricante do aparelho",
+            title = "System default",
+            subtitle = "Device vendor Vulkan",
             selected = activeId == null,
             onSelect = {
                 // [17-e1 #3/#4] I/O fora da main thread + feedback explícito
@@ -690,7 +767,7 @@ private fun DriversSection() {
                 scope.launch {
                     withContext(Dispatchers.IO) { GpuDriverManager.clearActive(context) }
                     activeId = null
-                    message = "Usando o driver Vulkan do sistema."
+                    message = "Using the system Vulkan driver."
                     isError = false
                 }
             },
@@ -703,8 +780,8 @@ private fun DriversSection() {
         if (GpuDriverManager.isVortekAvailable(context)) {
             DriverOptionRow(
                 title = "Vortek (experimental)",
-                subtitle = "Camada de compatibilidade sobre o driver do " +
-                    "sistema — pensada p/ Mali e demais GPUs · © brunodev85 " +
+                subtitle = "Compatibility layer over the system driver — " +
+                    "built for Mali and other GPUs · © brunodev85 " +
                     "(Winlator, LGPL-2.1)",
                 selected = activeId == GpuDriverManager.VORTEK_DRIVER_ID,
                 onSelect = {
@@ -717,18 +794,18 @@ private fun DriversSection() {
                         }
                             .onSuccess {
                                 activeId = GpuDriverManager.VORTEK_DRIVER_ID
-                                message = "Vortek ativado — camada de compatibilidade " +
-                                    "sobre o driver do sistema. Recomendado em GPUs " +
-                                    "Mali e outras não-Adreno; em Adreno, o Turnip " +
-                                    "direto costuma ser mais rápido. Vale no " +
-                                    "próximo início do jogo."
+                                message = "Vortek enabled — compatibility layer " +
+                                    "over the system driver. Recommended on " +
+                                    "Mali and other non-Adreno GPUs; on Adreno, " +
+                                    "plain Turnip is usually faster. Takes " +
+                                    "effect on the next game launch."
                                 isError = false
                             }
                             .onFailure { vortekErr ->
                                 // [17-e3] message pode ser null em throwable
                                 // não-DriverImportException — fallback curado.
                                 message = vortekErr.message
-                                    ?: "Falha ao ativar o Vortek — tente novamente."
+                                    ?: "Failed to enable Vortek — please try again."
                                 isError = true
                             }
                     }
@@ -755,12 +832,12 @@ private fun DriversSection() {
                         }
                             .onSuccess {
                                 activeId = driver.id
-                                message = "Driver “${driver.name}” será usado no próximo início do jogo."
+                                message = "Driver “${driver.name}” will be used on the next game launch."
                                 isError = false
                             }
                             .onFailure { importMsg ->
                                 message = importMsg.message
-                                    ?: "Falha ao selecionar o driver — tente novamente."
+                                    ?: "Failed to select the driver — please try again."
                                 isError = true
                             }
                     }
@@ -774,7 +851,7 @@ private fun DriversSection() {
                         }
                         drivers = GpuDriverManager.list(context)
                         activeId = GpuDriverManager.activeId(context)
-                        message = "Driver removido."
+                        message = "Driver removed."
                         isError = false
                     }
                 }
@@ -810,7 +887,7 @@ private fun DriversSection() {
                         color = accent
                     )
                     Text(
-                        text = "Importando driver…",
+                        text = "Importing driver…",
                         color = accent.copy(alpha = 0.7f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
@@ -823,7 +900,7 @@ private fun DriversSection() {
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Importar driver (.zip)",
+                        text = "Import driver (.zip)",
                         color = accent,
                         style = PortType.caption
                     )
@@ -909,7 +986,7 @@ private fun DriverOptionRow(
             ) {
                 Icon(
                     imageVector = Icons.Filled.DeleteOutline,
-                    contentDescription = "Remover driver",
+                    contentDescription = "Remove driver",
                     tint = PortPalette.error.copy(alpha = 0.7f),
                     modifier = Modifier.size(17.dp)
                 )
@@ -936,11 +1013,11 @@ private fun DiagnosticsSection(
     val context = LocalContext.current
 
     Column {
-        SectionHeader("Diagnóstico")
+        SectionHeader("Diagnostics")
 
         ToggleRow(
-            label = "Log detalhado (debug)",
-            subtitle = "Grava eventos internos do motor no log da sessão",
+            label = "Detailed log (debug)",
+            subtitle = "Records internal engine events in the session log",
             checked = detailedLogs,
             onChange = onDetailedLogsChange
         )
@@ -951,10 +1028,10 @@ private fun DiagnosticsSection(
         Text(
             text = when {
                 logLocation == null ->
-                    "Log: ainda não iniciado."
+                    "Log: not started yet."
                 logLocation == "privado" ->
-                    "Log: storage PRIVADO do app (conceda \"Todos os arquivos\" " +
-                        "para usar /storage/emulated/0/Naughty Bear ReStuff/logs)."
+                    "Log: app PRIVATE storage (grant \"All files access\" " +
+                        "to use /storage/emulated/0/Naughty Mobile Bears Community Edition/logs)."
                 else -> "Log: " + logLocation.removePrefix("publico:")
             },
             color = PortPalette.textTertiary,
@@ -970,15 +1047,15 @@ private fun DiagnosticsSection(
             val labelColor: Color
             when (outcome.status) {
                 "custom_ok" -> {
-                    label = "Último boot: driver CUSTOMIZADO carregado (AdrenoTools)"
+                    label = "Last boot: CUSTOM driver loaded (AdrenoTools)"
                     labelColor = PortPalette.success
                 }
                 "custom_failed" -> {
-                    label = "Último boot: driver customizado FALHOU — usado o do sistema"
+                    label = "Last boot: custom driver FAILED — system one used"
                     labelColor = PortPalette.error
                 }
                 else -> {
-                    label = "Último boot: driver do sistema"
+                    label = "Last boot: system driver"
                     labelColor = PortPalette.textTertiary
                 }
             }
@@ -989,14 +1066,14 @@ private fun DiagnosticsSection(
             )
             if (outcome.status == "custom_failed" && outcome.error != "-") {
                 Text(
-                    text = "  motivo: " + outcome.error.take(120),
+                    text = "  reason: " + outcome.error.take(120),
                     color = PortPalette.textTertiary,
                     style = PortType.mono.copy(fontSize = 10.5.sp)
                 )
             }
         } else {
             Text(
-                text = "Driver: rode o jogo uma vez para ver o desfecho do boot.",
+                text = "Driver: launch the game once to see the boot outcome.",
                 color = PortPalette.textTertiary,
                 style = PortType.mono.copy(fontWeight = FontWeight.SemiBold)
             )
@@ -1005,11 +1082,96 @@ private fun DiagnosticsSection(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Crashes nativos gravam backtrace no log da sessão e em " +
-                "files/last_crash.txt (visível só via adb/backup).",
+            text = "Native crashes record a backtrace in the session log and in " +
+                "files/last_crash.txt (visible only via adb/backup).",
             color = PortPalette.textTertiary,
             fontSize = 10.5.sp,
             lineHeight = 14.sp
         )
+
+        Spacer(Modifier.height(12.dp))
+        DevLogViewer(logLocation = logLocation)
     }
+}
+
+/**
+ * Dev log do Community Edition (dev build): últimas linhas do log da
+ * sessão + identificação do aparelho. Sem FileProvider/share nesta
+ * versão — leitura local para o playtest (30/out).
+ */
+@Composable
+private fun DevLogViewer(logLocation: String?) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val tail = remember(logLocation) { readLogTail(context, logLocation, 60) }
+    val deviceLine = remember {
+        "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} " +
+            "(Android ${android.os.Build.VERSION.RELEASE}, " +
+            "${android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "?"})"
+    }
+
+    SettingLabel("Dev log (last ${tail.lines} lines)")
+    Spacer(Modifier.height(6.dp))
+    Text(
+        text = deviceLine,
+        color = PortPalette.textTertiary,
+        style = PortType.mono.copy(fontSize = 10.5.sp)
+    )
+    Spacer(Modifier.height(6.dp))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = if (expanded) 400.dp else 180.dp)
+            .verticalScroll(rememberScrollState())
+            .background(Color(0x14000000), RoundedCornerShape(8.dp))
+            .padding(10.dp)
+    ) {
+        Text(
+            text = tail.text,
+            color = PortPalette.textSecondary,
+            style = PortType.mono.copy(fontSize = 10.sp, lineHeight = 13.sp),
+            fontFamily = FontFamily.Monospace
+        )
+    }
+    Spacer(Modifier.height(6.dp))
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .portClickable(haptic = true) { expanded = !expanded }
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (expanded) "COLLAPSE" else "EXPAND",
+            color = PortPalette.textSecondary,
+            style = PortType.chip
+        )
+    }
+}
+
+private data class LogTail(val text: String, val lines: Int)
+
+private fun readLogTail(context: android.content.Context, logLocation: String?, maxLines: Int): LogTail {
+    fun tailOf(file: java.io.File): LogTail? = runCatching {
+        if (!file.isFile) return null
+        val lines = file.bufferedReader().useLines { seq -> seq.toList().takeLast(maxLines) }
+        if (lines.isEmpty()) return null
+        LogTail(lines.joinToString("\n"), lines.size)
+    }.getOrNull()
+    // 1) Log público da sessão (caminho absoluto após "publico:").
+    if (logLocation != null && logLocation.startsWith("publico:")) {
+        tailOf(java.io.File(logLocation.removePrefix("publico:")))?.let { return it }
+    }
+    // 2) Storage privado: <files>/logs/restuff_*.log mais recente.
+    runCatching {
+        val dir = java.io.File(context.filesDir, "logs")
+        dir.listFiles { f -> f.isFile && f.name.startsWith("restuff_") && f.name.endsWith(".log") }
+            ?.maxByOrNull { it.lastModified() }
+            ?.let { tailOf(it)?.let { t -> return t } }
+    }
+    // 3) Crash mais recente.
+    runCatching {
+        tailOf(java.io.File(context.filesDir, "last_crash.txt"))?.let { return it }
+    }
+    return LogTail("No log yet — launch the game once.", 0)
 }

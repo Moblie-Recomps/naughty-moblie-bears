@@ -67,7 +67,7 @@ class GameActivity : SDLActivity() {
 
     /**
      * Resolve o diretório de logs no STORAGE PÚBLICO
-     * (/storage/emulated/<user>/Naughty Bear ReStuff/logs), criando-o se
+     * (/storage/emulated/<user>/Naughty Mobile Bears Community Edition/logs), criando-o se
      * necessário e PROBANDO gravabilidade (arquivo .probe). Retorna null se
      * indisponível (permissão "Todos os arquivos" não concedida no Android
      * 11+, storage desmontado) — nesse caso o motor usa o storage privado.
@@ -79,7 +79,7 @@ class GameActivity : SDLActivity() {
      */
     private fun resolvePublicLogDir(): File? = runCatching {
         if (Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED) return@runCatching null
-        val dir = File(Environment.getExternalStorageDirectory(), "Naughty Bear ReStuff/logs")
+        val dir = File(Environment.getExternalStorageDirectory(), "Naughty Mobile Bears Community Edition/logs")
         if (!dir.isDirectory && !dir.mkdirs()) return@runCatching null
         val probe = File(dir, ".probe")
         probe.writeText("ok")
@@ -151,6 +151,11 @@ class GameActivity : SDLActivity() {
                 appendLine("fullscreen = false")
                 appendLine("fps_cap = ${settings.fpsLimit.fps}")
                 appendLine("vblank_hz = ${settings.vblankHz}")
+                // 540p Community Edition: escala interna via env
+                // RESTUFF_RES_SCALE (argv --res-pct) — o nativo resolve
+                // 75 → 960x540, 100 → 1280x720. Linha só documental (o
+                // cvar não existe no motor; a via oficial é o env).
+                appendLine("# res_scale_pct = ${settings.resOption.pct} (${settings.resOption.w}x${settings.resOption.h})")
                 appendLine("use_translated_shaders = true")
                 appendLine("unlock_all = ${settings.unlockAllCheat}")
                 // Texture mods (upstream PC 6b269c1): packs em
@@ -195,6 +200,7 @@ class GameActivity : SDLActivity() {
             "--config=$configPath",
             "--log-level=$logLevel",
             "--fps60=${settings.unlock60Fps}",
+            "--res-pct=${settings.resOption.pct}",
         ) + (logFile?.let { arrayOf("--log-file=$it") } ?: emptyArray())
     }
 
@@ -245,6 +251,9 @@ class GameActivity : SDLActivity() {
                 opacity = settings.overlayOpacity,
                 scale = settings.overlayScale,
                 haptics = settings.hapticFeedback,
+                deadzone = settings.stickDeadzone,
+                sensitivity = settings.stickSensitivity,
+                eightWay = settings.dpadEightWay,
             )
             pad.visibility =
                 if (settings.showOverlayControls) View.VISIBLE else View.GONE
@@ -458,6 +467,9 @@ class GameActivity : SDLActivity() {
             pad.setOpacity(s.overlayOpacity)
             pad.setScale(s.overlayScale)
             pad.setHaptics(s.hapticFeedback)
+            pad.setDeadzone(s.stickDeadzone)
+            pad.setSensitivity(s.stickSensitivity)
+            pad.setEightWay(s.dpadEightWay)
             pad.visibility = if (s.showOverlayControls) View.VISIBLE else View.GONE
         }
         setFpsCounterVisible(s.showFpsCounter)

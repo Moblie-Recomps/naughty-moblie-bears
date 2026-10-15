@@ -223,6 +223,6 @@ internal fun openInBrowser(context: Context, url: String) {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     } catch (_: Exception) {
-        Toast.makeText(context, "Nenhum navegador encontrado", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "No browser found", Toast.LENGTH_SHORT).show()
     }
 }

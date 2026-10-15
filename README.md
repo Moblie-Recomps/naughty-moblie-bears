@@ -1,12 +1,21 @@
-# Naughty Bear ReStuff — Port Android
+# Naughty Mobile Bears Community Edition — Port Android
 
-Port Android (arm64-v8a) do **Naughty Bear ReStuff** — recompilação do
+Port Android (arm64-v8a) do **Naughty Mobile Bears Community Edition** (base **Naughty Bear ReStuff**) — recompilação do
 *Naughty Bear Gold Edition* (Xbox 360) feita com o [rexglue-SDK](https://github.com/rexglue/rexglue-sdk)
 ([MaxDeadBear/NaughtyBear_ReStuff](https://github.com/MaxDeadBear/NaughtyBear_ReStuff)).
 
 Interface de seleção de dados baseada no
 [port-screen-template](https://github.com/deivid22srk/port-screen-template)
 (Kotlin + Jetpack Compose).
+
+## Naughty Mobile Bears Community Edition (dev build)
+
+Community rebrand and playtest build: English UI, **540p default render**
+(960x540, ~44% fewer fragments than 720p), one-tap **device presets**
+(SD 680 / Helio G99 / G88 / G100 / Dimensity 6080), touch tuning (stick
+deadzone + sensitivity, 4/8-way D-pad), live FPS counter on by default,
+in-app dev log viewer, and new icon + launcher art. Original ReStuff fork
+by MaxDeadBear.
 
 ## Downloads
 
@@ -61,7 +70,7 @@ montáveis — escolha o arquivo do armazenamento do aparelho.
   Configurações → Diagnóstico; em caso de falha o motor volta para o driver
   do sistema sem crashar
 - **Log detalhado persistido em
-  `/storage/emulated/0/Naughty Bear ReStuff/logs/`** (com fallback automático
+  `/storage/emulated/0/Naughty Mobile Bears Community Edition/logs/`** (com fallback automático
   para o storage privado quando a permissão "Todos os arquivos" não foi
   concedida): timestamps, nível debug (toggle), rotação 5 MB × 20 e retenção
   de 10 sessões; espelho completo no logcat (tag `restuff-rex`) com mensagens
@@ -72,10 +81,10 @@ montáveis — escolha o arquivo do armazenamento do aparelho.
   debuggerd continua sendo gerado (nota: após o início do runtime, faults de
   memória do guest passam pelo handler MMIO do SDK — sigfaults de host
   fora dessa janela contam com o tombstone do debuggerd)
-- Tela de seleção de dados nível AAA (template): parallax, partículas,
-  estados animados, créditos do portador
-- Configurações persistidas: controles, cheat/60fps, log detalhado,
-  limpar seleção
+- Home screen (Honey & Charcoal): ambient particles, animated states,
+  porter credit (no external links)
+- Persisted settings: controls, cheat/60fps, detailed log,
+  clear selection, 540p/720p render scale, playtest device presets
 
 ## Arquitetura
 

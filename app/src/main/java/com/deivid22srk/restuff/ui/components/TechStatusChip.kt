@@ -78,5 +78,11 @@ private fun computeInfo(context: android.content.Context): String {
         hasCustomDriver -> "VULKAN · TURNIP"
         else -> "VULKAN"
     }
-    return listOf("RESTUFF", renderer, abi).joinToString("  ·  ")
+    val perf = try {
+        val s = com.deivid22srk.restuff.settings.PortSettingsRepository(context).load()
+        "${s.resOption.label.uppercase()} · ${s.fpsLimit.label}FPS"
+    } catch (_: Exception) {
+        "540P"
+    }
+    return listOf("RESTUFF", renderer, abi, perf).joinToString("  ·  ")
 }

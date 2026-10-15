@@ -426,6 +426,11 @@ int main(int argc, char** argv) {
       if (strcmp(a + 8, "true") == 0) {
         setenv("RESTUFF_FPS60", "1", 1);
       }
+    } else if (strncmp(a, "--res-pct=", 10) == 0) {
+      // Community Edition 540p: escala interna (75 = 960x540, 100 = 720p).
+      // Lida por SceneScale()/ResScalePct() no native_vk.cpp (overlay).
+      setenv("RESTUFF_RES_SCALE", a + 10, 1);
+      ALOG("res_scale -> %s", a + 10);
     } else if (strncmp(a, "--config=", 9) == 0) {
       setenv("REX_CONFIG_PATH", a + 9, 1);
     } else if (strncmp(a, "--cache_root=", 13) == 0) {

@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NaughtyBearReStuff"
+rootProject.name = "NaughtyMobileBearsCommunityEdition"
 include(":app")

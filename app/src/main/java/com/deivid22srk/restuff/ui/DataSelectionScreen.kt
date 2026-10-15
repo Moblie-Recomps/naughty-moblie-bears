@@ -406,14 +406,14 @@ private fun StorageAccessBanner(onGrant: () -> Unit, modifier: Modifier = Modifi
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Text(
-            text = "Para jogar direto da pasta, sem cópia, conceda o " +
-                "\"Acesso a todos os arquivos\".",
+            text = "To play straight from a folder, with no copy, grant " +
+                "\"All files access\".",
             color = PortPalette.textSecondary,
             style = PortType.rowSub,
             modifier = Modifier.weight(1f, fill = false)
         )
         Text(
-            text = "Conceder →",
+            text = "Grant →",
             color = config.accent,
             style = PortType.caption
         )

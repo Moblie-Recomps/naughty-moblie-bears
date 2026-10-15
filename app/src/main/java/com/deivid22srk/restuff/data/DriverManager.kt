@@ -119,33 +119,33 @@ object GpuDriverManager {
                         zip.closeEntry()
                     }
                 }
-            } ?: throw DriverImportException("Não foi possível abrir o arquivo selecionado.")
+            } ?: throw DriverImportException("Could not open the selected file.")
         } catch (e: DriverImportException) {
             throw e
         } catch (e: ZipException) {
-            throw DriverImportException("Arquivo .zip inválido ou corrompido.")
+            throw DriverImportException("Invalid or corrupted .zip file.")
         } catch (e: IOException) {
             // [evidência] review 17-e1 #2: e.message de FileNotFoundException
             // leva o caminho/URI cru do arquivo — mensagem curada, sem path.
             throw DriverImportException(
-                "Falha ao ler o .zip selecionado — tente selecioná-lo novamente."
+                "Failed to read the selected .zip — please select it again."
             )
         }
 
         if (entries.isEmpty() && metaJson == null) {
-            throw DriverImportException("O .zip está vazio.")
+            throw DriverImportException("The .zip is empty.")
         }
 
         // ---- Valida meta.json (padrão AdrenoTools) ----------------------
         if (metaJson == null) {
             throw DriverImportException(
-                "meta.json não encontrado no .zip — não é um driver no padrão AdrenoTools."
+                "meta.json not found in the .zip — not an AdrenoTools-standard driver."
             )
         }
         val meta = try {
             JSONObject(metaJson!!)
         } catch (e: Exception) {
-            throw DriverImportException("meta.json do driver é inválido (JSON corrompido).")
+            throw DriverImportException("Driver meta.json is invalid (corrupted JSON).")
         }
 
         val libName = (meta.optString("libName", "")
@@ -153,7 +153,7 @@ object GpuDriverManager {
         val displayName = meta.optString("name", "")
             .ifEmpty { meta.optString("description", "") }
             .ifEmpty { "Driver Turnip" }
-        val author = meta.optString("author", "").ifEmpty { "desconhecido" }
+        val author = meta.optString("author", "").ifEmpty { "unknown" }
         val version = meta.optString("packageVersion", "")
             .ifEmpty { meta.optString("version", "") }.ifEmpty { "?" }
         val vendor = meta.optString("vendor", "")
@@ -164,8 +164,8 @@ object GpuDriverManager {
         val minApi = meta.optInt("minAPI", meta.optInt("minApi", 0))
         if (minApi > 0 && minApi > Build.VERSION.SDK_INT) {
             throw DriverImportException(
-                "Este driver exige Android $minApi (minAPI do meta.json); o " +
-                    "aparelho está no Android ${Build.VERSION.SDK_INT}."
+                "This driver requires Android $minApi (meta.json minAPI); this " +
+                    "device runs Android ${Build.VERSION.SDK_INT}."
             )
         }
 
@@ -176,7 +176,7 @@ object GpuDriverManager {
         val soEntries = entries.filter { it.endsWith(".so", ignoreCase = true) }
         if (soEntries.isEmpty()) {
             throw DriverImportException(
-                "Nenhuma biblioteca .so encontrada no .zip — driver incompleto."
+                "No .so library found in the .zip — incomplete driver."
             )
         }
         val target = libName.takeIf { it.isNotEmpty() }
@@ -190,7 +190,7 @@ object GpuDriverManager {
             !target.substringAfterLast('/').equals(libName, true)
         ) {
             throw DriverImportException(
-                "Biblioteca do driver ('$libName' esperado) não encontrada no .zip."
+                "Driver library (expected '$libName') not found in the .zip."
             )
         }
 
@@ -224,7 +224,7 @@ object GpuDriverManager {
             } ?: throw IOException("SAF fechou o stream")
             if (!destSo.isFile) {
                 throw DriverImportException(
-                    "Biblioteca principal ('$target') não foi extraída — zip incompleto."
+                    "Main library ('$target') was not extracted — incomplete zip."
                 )
             }
         } catch (e: Exception) {
@@ -232,7 +232,7 @@ object GpuDriverManager {
             if (e is DriverImportException) throw e
             // [evidência] review 17-e1 #2: idem — sem e.message na UI.
             throw DriverImportException(
-                "Falha ao extrair o driver — verifique o espaço livre e tente novamente."
+                "Failed to extract the driver — check free space and try again."
             )
         }
 
@@ -260,7 +260,7 @@ object GpuDriverManager {
             )
         } catch (e: IOException) {
             destDir.deleteRecursively()
-            throw DriverImportException("Falha ao salvar metadados do driver.")
+            throw DriverImportException("Failed to save driver metadata.")
         }
         return driver
     }
@@ -277,14 +277,14 @@ object GpuDriverManager {
             var read = 0
             while (read < 20) {
                 val n = zip.read(header, read, 20 - read)
-                if (n < 0) throw DriverImportException("Biblioteca do driver está truncada.")
+                if (n < 0) throw DriverImportException("Driver library is truncated.")
                 read += n
             }
             if (!(header[0] == 0x7F.toByte() && header[1] == 'E'.code.toByte() &&
                     header[2] == 'L'.code.toByte() && header[3] == 'F'.code.toByte())
             ) {
                 throw DriverImportException(
-                    "A biblioteca dentro do .zip não é um binário ELF válido (driver incompatível)."
+                    "The library inside the .zip is not a valid ELF binary (incompatible driver)."
                 )
             }
             if (validateArch) {
@@ -293,8 +293,8 @@ object GpuDriverManager {
                 val eMachine = ((header[19].toInt() and 0xFF) shl 8) or (header[18].toInt() and 0xFF)
                 if (eiClass != 2 || eMachine != 183 || eType != 3) {
                     throw DriverImportException(
-                        "Biblioteca principal não é um ELF arm64-v8a compartilhado " +
-                            "(classe=$eiClass máquina=$eMachine tipo=$eType) — driver incompatível."
+                        "Main library is not a shared arm64-v8a ELF " +
+                            "(class=$eiClass machine=$eMachine type=$eType) — incompatible driver."
                     )
                 }
             }
@@ -321,18 +321,18 @@ object GpuDriverManager {
     /** Define o driver ativo (o nativo fará dlopen dele no próximo boot). */
     fun setActive(context: Context, id: String) {
         val driver = readDriverJson(File(driversDir(context), id))
-            ?: throw DriverImportException("Driver não encontrado.")
+            ?: throw DriverImportException("Driver not found.")
         // [evidência] seleção SEM validação aceitava .so apagado/corrompido
         // (commit 3a8c08c) — confere existência + magic ELF antes de ativar.
         val so = File(driver.libPath)
         if (!so.isFile) {
             throw DriverImportException(
-                "Arquivo do driver não existe (${so.name}) — importe-o novamente."
+                "Driver file does not exist (${so.name}) — please import it again."
             )
         }
         readElfMagicOrThrow(
             so,
-            "Arquivo do driver não é um ELF válido — importe-o novamente."
+            "Driver file is not a valid ELF — please import it again."
         )
         // [evidência] mesmo bug do setActiveVortek: sem mkdirs(), o writeText
         // lançava FileNotFoundException (ENOENT) em <files>/drivers/active.txt
@@ -406,13 +406,13 @@ object GpuDriverManager {
         val so = vortekClientPath(context)
         if (!so.isFile) {
             throw DriverImportException(
-                "Cliente Vortek não encontrado no APK (${so.name}) — este " +
-                    "build não inclui a camada de compatibilidade."
+                "Vortek client not found in the APK (${so.name}) — this " +
+                    "build does not include the compatibility layer."
             )
         }
         readElfMagicOrThrow(
             so,
-            "Cliente Vortek inválido (não é um ELF) — reinstale o app."
+            "Invalid Vortek client (not an ELF) — please reinstall the app."
         )
         // [evidência] fix do ENOENT reportado ao selecionar Vortek: a camada
         // é embutida no APK (não passa pelo importFromZip, que é quem cria
@@ -436,16 +436,16 @@ object GpuDriverManager {
         val dir = driversDir(context)
         if (!dir.isDirectory && !dir.mkdirs()) {
             throw DriverImportException(
-                "Não foi possível criar o diretório de drivers (${dir.name}) — " +
-                    "verifique o espaço livre e tente novamente."
+                "Could not create the drivers directory (${dir.name}) — " +
+                    "check free space and try again."
             )
         }
         try {
             ActiveFileStore.write(dir, content)
         } catch (e: IOException) {
             throw DriverImportException(
-                "Falha ao salvar a seleção de driver — verifique o espaço " +
-                    "livre e tente novamente."
+                "Failed to save the driver selection — check free " +
+                    "space and try again."
             )
         }
     }

@@ -1,5 +1,22 @@
 # Changelog — naughtybear-restuff-android
 
+## Unreleased — Naughty Mobile Bears Community Edition (dev build, target 30 Oct 2026)
+
+- Rebrand to **Naughty Mobile Bears Community Edition** (launcher label,
+  home-screen title, log folder, CI release names). Package
+  `com.deivid22srk.restuff` and `librestuff.so` unchanged.
+- **540p default render** (960x540): percent render scale 50–400% in the
+  native scene target (`RESTUFF_RES_SCALE`, default 75), with resolve,
+  viewport, scissor and pgen paths updated; 720p still selectable.
+  Wired end-to-end: Settings preset → `--res-pct` → native env.
+- **Playtest device presets** (all 540p): SD 680 → 60fps, Helio G99 → 45fps,
+  Helio G88/G100 → 30fps, Dimensity 6080 → 60fps. New FPS steps 40/45/50.
+- Touch tuning: stick deadzone + sensitivity, 4/8-way D-pad; fixed the D-pad
+  mask bug (button indices were sent instead of bit masks).
+- English UI throughout; credits dialog links removed, MaxDeadBear credited
+  in the footer; FPS counter on by default; in-app dev log viewer.
+- New app icon, launcher background and Play Store icon.
+
 ## v1.1.0 — feat(vortek): driver Vulkan Vortek + redesign da UI + controles de toque + limitador de FPS real (branch feat/vortek-driver-icone)
 
 Primeira release assinada com keystore de **release** dedicado (`keystore/release.keystore`,
